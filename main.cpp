@@ -219,34 +219,14 @@ string GenerateText(size_t seed, uint length)
 }
 
 /**
-Source perfomance (O0):
-
-Indexing...: 4399 ms
-Lookup 21950 ms
+Now(O2):
+Indexing...: 423 ms
+Lookup 97 ms
 MakeOutput 0 ms
-Sort 1751 ms
-SplitIntoWords 216 ms
-Run queries: 24327 ms
+Sort 14 ms
+SplitIntoWords 5 ms
+Run queries: 1405 ms
 
-Source perfomance (O2):
-Indexing...: 316 ms
-Lookup 836 ms
-MakeOutput 0 ms
-Sort 12 ms
-SplitIntoWords 18 ms
-Run queries: 935 ms
-
-Now(O0):
-Indexing...: 4410 ms
-Iterate vector 156 ms
-Lookup 934 ms
-MakeOutput 0 ms
-Sort 114 ms
-SplitIntoWords 219 ms
-Run queries: 3752 ms
-
-
-[nightwizard@enot-nout
 */
 
 void TestPerfomance()
