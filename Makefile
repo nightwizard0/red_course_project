@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-c -std=c++1z -Wall -Wextra -Wpedantic -Werror
+CFLAGS=-c -g -p -O2 -std=c++1z -Wall -Wextra -Wpedantic -Werror
 LDFLAGS=
 SOURCES=$(wildcard *.cpp)
 HEADERS=$(wildcard *.h)
@@ -20,4 +20,4 @@ clean:
 package:
 	rm -f $(EXECUTABLE).zip
 	zip $(EXECUTABLE).zip $(SOURCES) $(HEADERS)
-	zip -d  $(EXECUTABLE).zip test_runner.h
+	zip -d  $(EXECUTABLE).zip test_runner.h profile.h

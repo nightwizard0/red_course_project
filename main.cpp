@@ -11,6 +11,7 @@
 #include <fstream>
 #include <random>
 #include <thread>
+#include "profile.h"
 using namespace std;
 
 void TestFunctionality(
@@ -200,6 +201,98 @@ void TestBasicSearch() {
   TestFunctionality(docs, queries, expected);
 }
 
+string GenerateText(size_t seed, uint length)
+{
+  string result; result.resize(length, 'A');
+  
+  if (seed != 0)
+    srand(seed);
+
+  char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  for (uint i = 0; i < length; i++)
+  {
+    result[i] = alphabet[rand() % sizeof(alphabet)];
+  }
+
+  return result;
+}
+
+/**
+Source perfomance (O0):
+
+Indexing...: 4399 ms
+Lookup 21950 ms
+MakeOutput 0 ms
+Sort 1751 ms
+SplitIntoWords 216 ms
+Run queries: 24327 ms
+
+Source perfomance (O2):
+Indexing...: 316 ms
+Lookup 836 ms
+MakeOutput 0 ms
+Sort 12 ms
+SplitIntoWords 18 ms
+Run queries: 935 ms
+
+Now(O0):
+Indexing...: 4410 ms
+Iterate vector 156 ms
+Lookup 934 ms
+MakeOutput 0 ms
+Sort 114 ms
+SplitIntoWords 219 ms
+Run queries: 3752 ms
+
+
+[nightwizard@enot-nout
+*/
+
+void TestPerfomance()
+{
+  const uint DOC_COUNT = 50'000;
+  const uint WORDS_COUNT = 100;
+  const uint WORD_LENGTH = 100;
+  const uint QUERY_COUNT = 50'000;
+
+  stringstream ss, qs;
+
+  for (uint i = 0; i < DOC_COUNT; i++)
+  {
+    for (uint j = 0; j < WORDS_COUNT; j++)
+    {
+      ss << GenerateText(j % 10 == 0 ? 133U + rand() % 10 : 0U, WORD_LENGTH) << " ";
+    }
+
+    ss << "\n";
+  }
+
+  for (uint i = 0; i < QUERY_COUNT; i++)
+  {
+    int count = (rand() % 10) + 1;
+    
+    for (int j = 0; j < count; j++)
+    {
+      qs << GenerateText(i % 100 == 0 ? 133U + rand() % 10 : 0U, WORD_LENGTH) << " ";
+    } 
+
+    qs << "\n";
+  }
+
+  SearchServer srv;
+  {
+    LOG_DURATION("Indexing...");
+    srv.UpdateDocumentBase(ss);
+  }
+
+  stringstream rs;
+  {
+    LOG_DURATION("Run queries");
+    srv.AddQueriesStream(qs, rs);
+  }
+}
+
 int main() {
   TestRunner tr;
   RUN_TEST(tr, TestSerpFormat);
@@ -207,4 +300,5 @@ int main() {
   RUN_TEST(tr, TestHitcount);
   RUN_TEST(tr, TestRanking);
   RUN_TEST(tr, TestBasicSearch);
+  RUN_TEST(tr, TestPerfomance);
 }
