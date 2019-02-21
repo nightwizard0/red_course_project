@@ -11,6 +11,7 @@
 #include <fstream>
 #include <random>
 #include <thread>
+#include "profile.h"
 using namespace std;
 
 void TestFunctionality(
@@ -25,6 +26,8 @@ void TestFunctionality(
   srv.UpdateDocumentBase(docs_input);
   ostringstream queries_output;
   srv.AddQueriesStream(queries_input, queries_output);
+
+  srv.WaitAll();
 
   const string result = queries_output.str();
   const auto lines = SplitBy(Strip(result), '\n');
@@ -200,6 +203,80 @@ void TestBasicSearch() {
   TestFunctionality(docs, queries, expected);
 }
 
+string GenerateText(size_t seed, uint length)
+{
+  string result; result.resize(length, 'A');
+  
+  if (seed != 0)
+    srand(seed);
+
+  char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  for (uint i = 0; i < length; i++)
+  {
+    result[i] = alphabet[rand() % sizeof(alphabet)];
+  }
+
+  return result;
+}
+
+/**
+Now(O2):
+Indexing...: 423 ms
+Lookup 97 ms
+MakeOutput 0 ms
+Sort 14 ms
+SplitIntoWords 5 ms
+Run queries: 1405 ms
+
+*/
+
+void TestPerfomance()
+{
+  const uint DOC_COUNT = 50'000;
+  const uint WORDS_COUNT = 100;
+  const uint WORD_LENGTH = 100;
+  const uint QUERY_COUNT = 50'000;
+
+  stringstream ss, qs;
+
+  for (uint i = 0; i < DOC_COUNT; i++)
+  {
+    for (uint j = 0; j < WORDS_COUNT; j++)
+    {
+      ss << GenerateText(j % 10 == 0 ? 133U + rand() % 10 : 0U, WORD_LENGTH) << " ";
+    }
+
+    ss << "\n";
+  }
+
+  for (uint i = 0; i < QUERY_COUNT; i++)
+  {
+    int count = (rand() % 10) + 1;
+    
+    for (int j = 0; j < count; j++)
+    {
+      qs << GenerateText(i % 100 == 0 ? 133U + rand() % 10 : 0U, WORD_LENGTH) << " ";
+    } 
+
+    qs << "\n";
+  }
+
+  SearchServer srv;
+  {
+    LOG_DURATION("Indexing...");
+    srv.UpdateDocumentBase(ss);
+  }
+
+  stringstream rs;
+  {
+    LOG_DURATION("Run queries");
+    srv.AddQueriesStream(qs, rs);
+  }
+
+  srv.WaitAll();
+}
+
 int main() {
   TestRunner tr;
   RUN_TEST(tr, TestSerpFormat);
@@ -207,4 +284,5 @@ int main() {
   RUN_TEST(tr, TestHitcount);
   RUN_TEST(tr, TestRanking);
   RUN_TEST(tr, TestBasicSearch);
+  RUN_TEST(tr, TestPerfomance);
 }
