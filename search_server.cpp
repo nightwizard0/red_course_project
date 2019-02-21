@@ -7,6 +7,7 @@
 #include <sstream>
 #include <iostream>
 #include <string_view>
+#include <chrono>
 
 vector<string_view> SplitIntoWords(const string& s, size_t capacity) 
 {
@@ -49,7 +50,31 @@ void SearchServer::UpdateDocumentBase(istream& document_input) {
   index = move(new_index);
 }
 
-void SearchServer::AddQueriesStream(istream& query_input, ostream& search_results_output) 
+void SearchServer::AddQueriesStream(istream& query_input, ostream& search_results_output)
+{
+  if (futures.size() >= MAX_THREADS)
+  {
+    while (true)
+    {
+      for (auto& fut : futures)
+      {
+        if (fut.wait_for(1ms) == future_status::ready)
+        {
+          fut = async(&SearchServer::AddQueriesStreamSingleThread, this, ref(query_input), ref(search_results_output));
+          return ;
+        }
+      }
+
+      this_thread::sleep_for(50ms);
+    }
+  }
+  else
+  {
+    futures.push_back(async(&SearchServer::AddQueriesStreamSingleThread, this, ref(query_input), ref(search_results_output)));
+  }
+}
+
+void SearchServer::AddQueriesStreamSingleThread(istream& query_input, ostream& search_results_output) 
 {
   Profiler profiler;
 
@@ -71,8 +96,13 @@ void SearchServer::AddQueriesStream(istream& query_input, ostream& search_result
     for (const auto& word : words) 
     {
       STAT_DURATION(profiler, "Lookup");
+      vector<IndexItem> items;
+      {
+        auto acessor = index.GetAccess();
+        items = acessor.ref_to_value.Lookup(string(word));
+      }
 
-      for (const IndexItem& item : index.Lookup(string(word)))
+      for (const IndexItem& item : items)
       {
         if (docid_count[item.docid] == 0) 
         {
@@ -116,6 +146,12 @@ void SearchServer::AddQueriesStream(istream& query_input, ostream& search_result
   }
 }
 
+void SearchServer::WaitAll()
+{
+  for (auto& fut : futures)
+    fut.get();
+}
+
 InvertedIndex::InvertedIndex(InvertedIndex&& other)
   : index(move(other.index)),
     last_docid(other.last_docid)
@@ -130,7 +166,8 @@ void InvertedIndex::operator=(InvertedIndex&& other)
   other.last_docid = 0;
 }
 
-void InvertedIndex::Add(const string& document) {
+void InvertedIndex::Add(const string& document) 
+{
 
   const size_t docid =  last_docid++;
   map<string_view, size_t*> words;
@@ -149,7 +186,8 @@ void InvertedIndex::Add(const string& document) {
   }
 }
 
-const vector<IndexItem>& InvertedIndex::Lookup(const string& word) const {
+vector<IndexItem> InvertedIndex::Lookup(const string& word) const 
+{
   if (auto it = index.find(word); it != index.end()) {
     return it->second;
   } else {

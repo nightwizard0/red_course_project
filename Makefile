@@ -1,6 +1,6 @@
 CC=g++
 CFLAGS=-c -g -p -O2 -std=c++1z -Wall -Wextra -Wpedantic -Werror
-LDFLAGS=
+LDFLAGS=-pthread
 SOURCES=$(wildcard *.cpp)
 HEADERS=$(wildcard *.h)
 OBJECTS=$(SOURCES:.cpp=.o)
