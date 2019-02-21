@@ -27,6 +27,8 @@ void TestFunctionality(
   ostringstream queries_output;
   srv.AddQueriesStream(queries_input, queries_output);
 
+  srv.WaitAll();
+
   const string result = queries_output.str();
   const auto lines = SplitBy(Strip(result), '\n');
   ASSERT_EQUAL(lines.size(), expected.size());
@@ -271,6 +273,8 @@ void TestPerfomance()
     LOG_DURATION("Run queries");
     srv.AddQueriesStream(qs, rs);
   }
+
+  srv.WaitAll();
 }
 
 int main() {
